@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nebula Command Interface</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
 
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #000;
-            font-family: 'Rajdhani', sans-serif;
+            background-color: #0a0e27;
+            font-family: 'Inter', sans-serif;
         }
 
         /* --- MODERN HUD UI --- */
@@ -27,100 +27,261 @@
 
         .panel {
             position: absolute;
-            background: rgba(10, 20, 30, 0.6);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(0, 255, 200, 0.3);
-            border-radius: 4px;
-            padding: 20px;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px;
+            padding: 24px;
             color: #fff;
-            box-shadow: 0 0 20px rgba(0, 255, 200, 0.1);
+            box-shadow: 0 8px 32px rgba(59, 130, 246, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            font-size: 0.95rem;
         }
 
         /* Top Left - Status */
         #status-panel {
-            top: 30px;
-            left: 30px;
-            width: 280px;
+            top: 24px;
+            left: 24px;
+            width: 320px;
+            animation: slideInLeft 0.6s ease-out;
         }
         
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
         h1 {
-            margin: 0;
-            font-size: 1.5rem;
-            letter-spacing: 2px;
-            color: #00ffcc;
+            margin: 0 0 16px 0;
+            font-size: 1.3rem;
+            letter-spacing: 1px;
+            color: #3b82f6;
             text-transform: uppercase;
-            border-bottom: 1px solid rgba(0, 255, 200, 0.3);
-            padding-bottom: 10px;
-            margin-bottom: 15px;
+            font-weight: 600;
+            border-bottom: 2px solid rgba(59, 130, 246, 0.4);
+            padding-bottom: 12px;
         }
 
         .data-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 1rem;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            align-items: center;
         }
 
-        .label { color: #88aaff; }
-        .value { font-weight: 700; color: #fff; }
+        .label { 
+            color: #93c5fd;
+            font-weight: 500;
+        }
+        .value { 
+            font-weight: 600;
+            color: #dbeafe;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.95rem;
+        }
         
         #mode-indicator {
-            margin-top: 15px;
-            padding: 10px;
+            margin-top: 18px;
+            padding: 14px 16px;
             text-align: center;
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid #00ffcc;
-            color: #00ffcc;
-            font-weight: bold;
-            font-size: 1.2rem;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%);
+            border: 2px solid #3b82f6;
+            border-radius: 8px;
+            color: #60a5fa;
+            font-weight: 600;
+            font-size: 1.1rem;
             text-transform: uppercase;
-            transition: all 0.3s ease;
+            letter-spacing: 1px;
+            transition: all 0.4s ease;
+        }
+
+        #mode-indicator.saturn {
+            border-color: #f59e0b;
+            color: #fbbf24;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(249, 115, 22, 0.15) 100%);
+        }
+
+        #mode-indicator.collapse {
+            border-color: #ef4444;
+            color: #f87171;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(229, 62, 62, 0.15) 100%);
         }
 
         /* Bottom Right - Guide */
         #guide-panel {
-            bottom: 30px;
-            right: 30px;
+            bottom: 24px;
+            right: 24px;
             text-align: right;
+            animation: slideInRight 0.6s ease-out;
         }
         
         .gesture-item {
-            margin-bottom: 10px;
+            margin-bottom: 14px;
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            gap: 10px;
-            opacity: 0.6;
-            transition: opacity 0.3s;
+            gap: 12px;
+            opacity: 0.5;
+            transition: all 0.3s ease;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: transparent;
         }
+
+        .gesture-item:hover {
+            opacity: 0.8;
+            background: rgba(59, 130, 246, 0.1);
+        }
+
         .gesture-item.active {
             opacity: 1;
-            text-shadow: 0 0 8px #00ffcc;
+            text-shadow: 0 0 12px #3b82f6;
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.4);
         }
-        .icon { font-size: 1.5rem; }
+
+        .gesture-item.active.saturn {
+            text-shadow: 0 0 12px #f59e0b;
+            background: rgba(245, 158, 11, 0.15);
+            border-color: rgba(245, 158, 11, 0.4);
+        }
+
+        .gesture-item.active.collapse {
+            text-shadow: 0 0 12px #ef4444;
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.4);
+        }
+
+        .icon { 
+            font-size: 1.5rem;
+            transition: transform 0.3s ease;
+        }
+
+        .gesture-item.active .icon {
+            transform: scale(1.2);
+        }
+
+        /* Center - Gesture Hint */
+        #gesture-hint {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 15;
+        }
+
+        #gesture-hint.show {
+            opacity: 1;
+        }
+
+        .hint-text {
+            font-size: 1.2rem;
+            color: #60a5fa;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
 
         /* Hand Tracking Reticle */
         #reticle {
             position: absolute;
-            width: 40px;
-            height: 40px;
-            border: 2px solid rgba(0, 255, 200, 0.8);
+            width: 50px;
+            height: 50px;
+            border: 2.5px solid rgba(59, 130, 246, 0.9);
             border-radius: 50%;
             transform: translate(-50%, -50%);
             pointer-events: none;
-            transition: width 0.1s, height 0.1s;
-            display: none; /* Hidden until hand found */
+            transition: all 0.1s ease;
+            display: none;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.4), inset 0 0 20px rgba(59, 130, 246, 0.1);
         }
+
         #reticle::after {
             content: '';
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 4px;
-            height: 4px;
-            background: #00ffcc;
+            width: 6px;
+            height: 6px;
+            background: #60a5fa;
             transform: translate(-50%, -50%);
             border-radius: 50%;
+            box-shadow: 0 0 10px #3b82f6;
+        }
+
+        #reticle::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 30px;
+            height: 30px;
+            border: 1px dashed rgba(59, 130, 246, 0.3);
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+        }
+
+        #reticle.saturn {
+            border-color: rgba(245, 158, 11, 0.9);
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.4), inset 0 0 20px rgba(245, 158, 11, 0.1);
+        }
+
+        #reticle.saturn::after {
+            background: #fbbf24;
+            box-shadow: 0 0 10px #f59e0b;
+        }
+
+        #reticle.collapse {
+            border-color: rgba(239, 68, 68, 0.9);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.4), inset 0 0 20px rgba(239, 68, 68, 0.1);
+        }
+
+        #reticle.collapse::after {
+            background: #f87171;
+            box-shadow: 0 0 10px #ef4444;
+        }
+
+        /* Hand Info Indicator */
+        #hand-info {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px;
+            padding: 16px 20px;
+            color: #dbeafe;
+            font-size: 0.85rem;
+            font-family: 'Space Mono', monospace;
+            animation: slideInRight 0.6s ease-out;
+            pointer-events: none;
+            z-index: 11;
+        }
+
+        .hand-stat {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 6px;
+        }
+
+        .hand-stat:last-child {
+            margin-bottom: 0;
+        }
+
+        .stat-label {
+            color: #93c5fd;
         }
 
         .input_video { display: none; }
@@ -128,14 +289,39 @@
         /* Loading overlay */
         #loader {
             position: absolute;
-            top: 50%; left: 50%;
+            top: 50%;
+            left: 50%;
             transform: translate(-50%, -50%);
-            color: #00ffcc;
-            font-size: 1.5rem;
+            color: #3b82f6;
+            font-size: 1.3rem;
             z-index: 20;
-            background: rgba(0,0,0,0.8);
-            padding: 20px;
-            border: 1px solid #00ffcc;
+            background: rgba(10, 13, 23, 0.95);
+            padding: 40px;
+            border: 2px solid rgba(59, 130, 246, 0.5);
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 600;
+            letter-spacing: 1px;
+            box-shadow: 0 8px 32px rgba(59, 130, 246, 0.2);
+        }
+
+        /* Floating Particles Effect */
+        .loader-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            margin: 0 4px;
+            background: #3b82f6;
+            border-radius: 50%;
+            animation: pulse 1.4s infinite ease-in-out;
+        }
+
+        .loader-dot:nth-child(1) { animation-delay: -0.32s; }
+        .loader-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes pulse {
+            0%, 60%, 100% { opacity: 0.3; }
+            30% { opacity: 1; }
         }
     </style>
     
@@ -145,11 +331,26 @@
 </head>
 <body>
 
-    <div id="loader">INITIALIZING NEURAL LINK...</div>
+    <div id="loader">INITIALIZING NEURAL LINK<span class="loader-dot"></span><span class="loader-dot"></span><span class="loader-dot"></span></div>
 
     <!-- UI Layer -->
     <div id="hud">
         <div id="reticle"></div>
+
+        <div id="hand-info" style="display: none;">
+            <div class="hand-stat">
+                <span class="stat-label">Confidence:</span>
+                <span id="hand-confidence">0%</span>
+            </div>
+            <div class="hand-stat">
+                <span class="stat-label">Distance:</span>
+                <span id="hand-distance">0cm</span>
+            </div>
+            <div class="hand-stat">
+                <span class="stat-label">Gesture:</span>
+                <span id="hand-gesture">—</span>
+            </div>
+        </div>
 
         <div id="status-panel" class="panel">
             <h1>System Status</h1>
@@ -159,7 +360,7 @@
             </div>
             <div class="data-row">
                 <span class="label">Tracking</span>
-                <span class="value" id="track-status" style="color:#ff3366">OFFLINE</span>
+                <span class="value" id="track-status" style="color:#ef4444">OFFLINE</span>
             </div>
             <div class="data-row">
                 <span class="label">Frame Rate</span>
@@ -171,7 +372,7 @@
 
         <div id="guide-panel" class="panel">
             <div class="gesture-item" id="g-galaxy">
-                <span>GALAXY FORMATION</span> <span class="icon">🖐</span>
+                <span>GALAXY SPIRAL</span> <span class="icon">🖐️</span>
             </div>
             <div class="gesture-item" id="g-saturn">
                 <span>PLANETARY RING</span> <span class="icon">👌</span>
@@ -179,6 +380,13 @@
             <div class="gesture-item" id="g-collapse">
                 <span>GRAVITY COLLAPSE</span> <span class="icon">✊</span>
             </div>
+            <div class="gesture-item" id="g-wave">
+                <span>WAVE DISTORTION</span> <span class="icon">👋</span>
+            </div>
+        </div>
+
+        <div id="gesture-hint">
+            <div class="hint-text" id="hint-text"></div>
         </div>
     </div>
 
@@ -248,6 +456,9 @@
         const collapsePos = new Float32Array(particleCount * 3);
         const collapseCol = new Float32Array(particleCount * 3);
 
+        const wavePos = new Float32Array(particleCount * 3);
+        const waveCol = new Float32Array(particleCount * 3);
+
         // --- 1. GALAXY ---
         for(let i=0; i<particleCount; i++) {
             // Spiral math
@@ -316,6 +527,25 @@
             collapseCol[i*3+2] = 0.1;
         }
 
+        // --- 4. WAVE (Ripple Field) ---
+        for(let i=0; i<particleCount; i++) {
+            const x = (Math.random() - 0.5) * 200;
+            const y = (Math.random() - 0.5) * 200;
+            const z = (Math.random() - 0.5) * 200;
+            
+            wavePos[i*3] = x;
+            wavePos[i*3+1] = y;
+            wavePos[i*3+2] = z;
+
+            // Cyan/Blue wave colors
+            const dist = Math.sqrt(x*x + y*y + z*z);
+            const normalized = Math.min(dist / 150, 1);
+            
+            waveCol[i*3] = 0.2 + normalized * 0.3;      // R
+            waveCol[i*3+1] = 0.6 + normalized * 0.4;    // G (Cyan peak)
+            waveCol[i*3+2] = 1.0;                        // B
+        }
+
         // Init
         positions.set(galaxyPos);
         colors.set(galaxyCol);
@@ -362,39 +592,59 @@
         const trackStatus = document.getElementById('track-status');
         const modeIndicator = document.getElementById('mode-indicator');
         const fpsDisplay = document.getElementById('fps');
+        const handInfo = document.getElementById('hand-info');
+        const handConfidence = document.getElementById('hand-confidence');
+        const handDistance = document.getElementById('hand-distance');
+        const handGesture = document.getElementById('hand-gesture');
+        const gestureHint = document.getElementById('gesture-hint');
+        const hintText = document.getElementById('hint-text');
+
         const els = {
             galaxy: document.getElementById('g-galaxy'),
             saturn: document.getElementById('g-saturn'),
-            collapse: document.getElementById('g-collapse')
+            collapse: document.getElementById('g-collapse'),
+            wave: document.getElementById('g-wave')
         };
 
         // State
-        let targetState = 'galaxy'; // galaxy, saturn, collapse
+        let targetState = 'galaxy'; // galaxy, saturn, collapse, wave
         let handX = 0, handY = 0, handZ = 0; // Normalized -1 to 1
         let isTracking = false;
+        let currentConfidence = 0;
+        let waveIntensity = 0;
 
         function updateUI(state) {
             // Reset Styles
-            els.galaxy.classList.remove('active');
-            els.saturn.classList.remove('active');
-            els.collapse.classList.remove('active');
+            els.galaxy.classList.remove('active', 'saturn', 'collapse');
+            els.saturn.classList.remove('active', 'saturn', 'collapse');
+            els.collapse.classList.remove('active', 'saturn', 'collapse');
+            els.wave.classList.remove('active', 'saturn', 'collapse');
             
             if(state === 'galaxy') {
                 els.galaxy.classList.add('active');
                 modeIndicator.innerText = "GALAXY SPIRAL";
-                modeIndicator.style.borderColor = "#00ffcc";
-                modeIndicator.style.color = "#00ffcc";
+                modeIndicator.className = '';
             } else if (state === 'saturn') {
-                els.saturn.classList.add('active');
+                els.saturn.classList.add('active', 'saturn');
                 modeIndicator.innerText = "PLANETARY RING";
-                modeIndicator.style.borderColor = "#ffd700";
-                modeIndicator.style.color = "#ffd700";
+                modeIndicator.className = 'saturn';
             } else if (state === 'collapse') {
-                els.collapse.classList.add('active');
+                els.collapse.classList.add('active', 'collapse');
                 modeIndicator.innerText = "GRAVITATIONAL COLLAPSE";
-                modeIndicator.style.borderColor = "#ff3333";
-                modeIndicator.style.color = "#ff3333";
+                modeIndicator.className = 'collapse';
+            } else if (state === 'wave') {
+                els.wave.classList.add('active');
+                modeIndicator.innerText = "WAVE DISTORTION";
+                modeIndicator.className = '';
             }
+        }
+
+        function showHint(text) {
+            hintText.innerText = text;
+            gestureHint.classList.add('show');
+            setTimeout(() => {
+                gestureHint.classList.remove('show');
+            }, 2000);
         }
 
         function onResults(results) {
@@ -403,10 +653,13 @@
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 isTracking = true;
                 trackStatus.innerHTML = "ONLINE";
-                trackStatus.style.color = "#00ffcc";
+                trackStatus.style.color = "#60a5fa";
                 reticle.style.display = 'block';
+                handInfo.style.display = 'block';
 
                 const lm = results.multiHandLandmarks[0];
+                currentConfidence = (results.multiHandedness && results.multiHandedness[0]) ? 
+                    results.multiHandedness[0].score : 0.8;
                 
                 // 1. Position (Index finger tip)
                 // Normalize coordinates
@@ -421,57 +674,93 @@
                 handX = (ix - 0.5) * 2;
                 handY = (iy - 0.5) * 2;
                 
-                // Z-Depth estimation (Scale of hand relative to frame)
-                // Distance between wrist(0) and Middle finger mcp(9) usually stable
+                // Z-Depth estimation
                 const dx = lm[0].x - lm[9].x;
                 const dy = lm[0].y - lm[9].y;
                 const handSize = Math.sqrt(dx*dx + dy*dy);
-                // Map size to Z (approx 0.1 to 0.3)
-                handZ = (handSize - 0.15) * 5; // Adjustment factor
+                handZ = (handSize - 0.15) * 5;
 
-                // 2. Gesture Recognition
+                // 2. Enhanced Gesture Recognition
                 
-                // Calculate distances
+                // Landmark points
                 const thumbTip = lm[4];
                 const indexTip = lm[8];
                 const middleTip = lm[12];
                 const ringTip = lm[16];
                 const pinkyTip = lm[20];
-                const wrist = lm[0];
+                const palmBase = lm[0];
+                const indexMcp = lm[5];
+                const middleMcp = lm[9];
+                const ringMcp = lm[13];
+                const pinkyMcp = lm[17];
 
-                // Pinch (Thumb to Index)
+                // Distance calculations
                 const pinchDist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
                 
-                // Fist (Average distance of all fingertips to wrist)
-                const tips = [indexTip, middleTip, ringTip, pinkyTip];
+                // Finger curl detection
+                const fingerTips = [thumbTip, indexTip, middleTip, ringTip, pinkyTip];
+                const fingerMcps = [lm[3], indexMcp, middleMcp, ringMcp, pinkyMcp];
+                
+                const fingerCurls = fingerTips.map((tip, i) => {
+                    return Math.hypot(tip.x - fingerMcps[i].x, tip.y - fingerMcps[i].y);
+                });
+
+                // Average distance of all fingertips to palm
                 let avgDistToWrist = 0;
+                const tips = [indexTip, middleTip, ringTip, pinkyTip];
                 tips.forEach(tip => {
-                    avgDistToWrist += Math.hypot(tip.x - wrist.x, tip.y - wrist.y);
+                    avgDistToWrist += Math.hypot(tip.x - palmBase.x, tip.y - palmBase.y);
                 });
                 avgDistToWrist /= 4;
 
-                // Decision Tree
-                if (avgDistToWrist < 0.25) { 
-                    // FIST DETECTED
-                    targetState = 'collapse';
-                    reticle.style.borderColor = "#ff3333";
-                } else if (pinchDist < 0.06) {
-                    // PINCH DETECTED
-                    targetState = 'saturn';
-                    reticle.style.borderColor = "#ffd700";
+                // Palm movement velocity (wave detection)
+                const palmX = lm[9].x;
+                const palmY = lm[9].y;
+
+                // Decision Tree with refined thresholds
+                let gesture = 'open';
+                let newState = 'galaxy';
+
+                if (avgDistToWrist < 0.22) { 
+                    // FIST DETECTED - All fingers curled tight
+                    gesture = 'fist';
+                    newState = 'collapse';
+                    reticle.className = 'collapse';
+                } else if (pinchDist < 0.055) {
+                    // PINCH DETECTED - Thumb and index close
+                    gesture = 'pinch';
+                    newState = 'saturn';
+                    reticle.className = 'saturn';
+                } else if (fingerCurls[1] < 0.03 && fingerCurls[2] > 0.1) {
+                    // POINTING - Index extended, others curled
+                    gesture = 'point';
+                    newState = 'wave';
+                    reticle.className = '';
                 } else {
                     // OPEN HAND
-                    targetState = 'galaxy';
-                    reticle.style.borderColor = "#00ffcc";
+                    gesture = 'open';
+                    newState = 'galaxy';
+                    reticle.className = '';
                 }
 
-                updateUI(targetState);
+                // Update state if changed
+                if (newState !== targetState) {
+                    targetState = newState;
+                    updateUI(targetState);
+                    showHint(gesture.toUpperCase());
+                }
+
+                // Update hand info display
+                handConfidence.innerText = Math.round(currentConfidence * 100) + '%';
+                handDistance.innerText = Math.round(handSize * 100) + 'cm';
+                handGesture.innerText = gesture.toUpperCase();
 
             } else {
                 isTracking = false;
                 trackStatus.innerHTML = "SEARCHING...";
-                trackStatus.style.color = "#ff3366";
+                trackStatus.style.color = "#ef4444";
                 reticle.style.display = 'none';
+                handInfo.style.display = 'none';
             }
         }
 
@@ -515,16 +804,55 @@
             const curCol = geometry.attributes.color.array;
             
             let destPos, destCol;
-            if(targetState === 'saturn') { destPos = saturnPos; destCol = saturnCol; }
-            else if(targetState === 'collapse') { destPos = collapsePos; destCol = collapseCol; }
-            else { destPos = galaxyPos; destCol = galaxyCol; }
+            if(targetState === 'saturn') { 
+                destPos = saturnPos; 
+                destCol = saturnCol; 
+            } else if(targetState === 'collapse') { 
+                destPos = collapsePos; 
+                destCol = collapseCol; 
+            } else if(targetState === 'wave') {
+                destPos = wavePos;
+                destCol = waveCol;
+            } else { 
+                destPos = galaxyPos; 
+                destCol = galaxyCol; 
+            }
 
-            // Lerp Speed
-            const speed = 0.05;
+            // Lerp Speed (faster for wave transition)
+            const speed = targetState === 'wave' ? 0.08 : 0.05;
 
             for(let i=0; i<particleCount * 3; i++) {
                 curPos[i] += (destPos[i] - curPos[i]) * speed;
                 curCol[i] += (destCol[i] - curCol[i]) * speed;
+            }
+
+            // Wave-specific animation: ripple effect
+            if(targetState === 'wave') {
+                waveIntensity += 0.02;
+                const waveStrength = Math.sin(waveIntensity) * 30;
+                
+                for(let i=0; i<particleCount; i++) {
+                    const idx = i * 3;
+                    const dist = Math.sqrt(
+                        curPos[idx] * curPos[idx] + 
+                        curPos[idx+1] * curPos[idx+1] + 
+                        curPos[idx+2] * curPos[idx+2]
+                    );
+                    
+                    // Apply wave distortion
+                    const wave = Math.sin(dist * 0.02 - waveIntensity) * waveStrength;
+                    
+                    // Normalize and apply outward push
+                    if(dist > 0.1) {
+                        const nx = curPos[idx] / dist;
+                        const ny = curPos[idx+1] / dist;
+                        const nz = curPos[idx+2] / dist;
+                        
+                        curPos[idx] += nx * wave * 0.05;
+                        curPos[idx+1] += ny * wave * 0.05;
+                        curPos[idx+2] += nz * wave * 0.05;
+                    }
+                }
             }
 
             geometry.attributes.position.needsUpdate = true;
@@ -544,12 +872,20 @@
                 // Base Z is 400. Closer hand (larger Z value) -> Zoom in
                 const targetCamZ = 400 - (handZ * 200); 
                 camera.position.z += (targetCamZ - camera.position.z) * 0.05;
+                
+                // Add subtle scale effect for wave interaction
+                if(targetState === 'wave') {
+                    const waveScale = 1 + Math.sin(waveIntensity * 0.5) * 0.1;
+                    system.scale.set(waveScale, waveScale, waveScale);
+                }
 
             } else {
                 // Idle Rotation
                 system.rotation.y += 0.001;
                 // Return to base zoom
                 camera.position.z += (400 - camera.position.z) * 0.05;
+                system.scale.set(1, 1, 1);
+                waveIntensity = 0;
             }
 
             renderer.render(scene, camera);
