@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nebula Command Interface</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Rajdhani', sans-serif;
+        }
+
+        /* --- MODERN HUD UI --- */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .panel {
+            position: absolute;
+            background: rgba(10, 20, 30, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 255, 200, 0.3);
+            border-radius: 4px;
+            padding: 20px;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(0, 255, 200, 0.1);
+        }
+
+        /* Top Left - Status */
+        #status-panel {
+            top: 30px;
+            left: 30px;
+            width: 280px;
+        }
+        
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            letter-spacing: 2px;
+            color: #00ffcc;
+            text-transform: uppercase;
+            border-bottom: 1px solid rgba(0, 255, 200, 0.3);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 1rem;
+        }
+
+        .label { color: #88aaff; }
+        .value { font-weight: 700; color: #fff; }
+        
+        #mode-indicator {
+            margin-top: 15px;
+            padding: 10px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #00ffcc;
+            color: #00ffcc;
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+        }
+
+        /* Bottom Right - Guide */
+        #guide-panel {
+            bottom: 30px;
+            right: 30px;
+            text-align: right;
+        }
+        
+        .gesture-item {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            opacity: 0.6;
+            transition: opacity 0.3s;
+        }
+        .gesture-item.active {
+            opacity: 1;
+            text-shadow: 0 0 8px #00ffcc;
+        }
+        .icon { font-size: 1.5rem; }
+
+        /* Hand Tracking Reticle */
+        #reticle {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border: 2px solid rgba(0, 255, 200, 0.8);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            transition: width 0.1s, height 0.1s;
+            display: none; /* Hidden until hand found */
+        }
+        #reticle::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 4px;
+            background: #00ffcc;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+        }
+
+        .input_video { display: none; }
+        
+        /* Loading overlay */
+        #loader {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00ffcc;
+            font-size: 1.5rem;
+            z-index: 20;
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border: 1px solid #00ffcc;
+        }
+    </style>
+    
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+    <div id="loader">INITIALIZING NEURAL LINK...</div>
+
+    <!-- UI Layer -->
+    <div id="hud">
+        <div id="reticle"></div>
+
+        <div id="status-panel" class="panel">
+            <h1>System Status</h1>
+            <div class="data-row">
+                <span class="label">Particles</span>
+                <span class="value">10,000</span>
+            </div>
+            <div class="data-row">
+                <span class="label">Tracking</span>
+                <span class="value" id="track-status" style="color:#ff3366">OFFLINE</span>
+            </div>
+            <div class="data-row">
+                <span class="label">Frame Rate</span>
+                <span class="value" id="fps">0 FPS</span>
+            </div>
+            
+            <div id="mode-indicator">WAITING</div>
+        </div>
+
+        <div id="guide-panel" class="panel">
+            <div class="gesture-item" id="g-galaxy">
+                <span>GALAXY FORMATION</span> <span class="icon">🖐</span>
+            </div>
+            <div class="gesture-item" id="g-saturn">
+                <span>PLANETARY RING</span> <span class="icon">👌</span>
+            </div>
+            <div class="gesture-item" id="g-collapse">
+                <span>GRAVITY COLLAPSE</span> <span class="icon">✊</span>
+            </div>
+        </div>
+    </div>
+
+    <video class="input_video"></video>
+    
+    <!-- Three.js Container -->
+    <div id="canvas-container"></div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // ==========================================
+        // 1. SCENE SETUP
+        // ==========================================
+        const container = document.getElementById('canvas-container');
+        const loader = document.getElementById('loader');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x020205, 0.0015);
+        scene.background = new THREE.Color(0x020205);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 3000);
+        camera.position.z = 400;
+        camera.position.y = 50;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        // Add background stars
+        const starGeo = new THREE.BufferGeometry();
+        const starCount = 2000;
+        const starPos = new Float32Array(starCount * 3);
+        for(let i=0; i<starCount*3; i++) {
+            starPos[i] = (Math.random() - 0.5) * 2000;
+        }
+        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        const starMat = new THREE.PointsMaterial({color: 0x555555, size: 1, sizeAttenuation: false});
+        const starField = new THREE.Points(starGeo, starMat);
+        scene.add(starField);
+
+
+        // ==========================================
+        // 2. PARTICLE SYSTEM & SHAPES
+        // ==========================================
+        const particleCount = 10000;
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+        const sizes = new Float32Array(particleCount);
+
+        // Target Arrays
+        const galaxyPos = new Float32Array(particleCount * 3);
+        const galaxyCol = new Float32Array(particleCount * 3);
+        
+        const saturnPos = new Float32Array(particleCount * 3);
+        const saturnCol = new Float32Array(particleCount * 3);
+
+        const collapsePos = new Float32Array(particleCount * 3);
+        const collapseCol = new Float32Array(particleCount * 3);
+
+        // --- 1. GALAXY ---
+        for(let i=0; i<particleCount; i++) {
+            // Spiral math
+            const angle = i * 0.005;
+            const r = 20 + i * 0.04;
+            const armOffset = (i % 3) * (Math.PI * 2 / 3);
+            const spread = (Math.random() - 0.5) * 15;
+            
+            const x = Math.cos(angle + armOffset) * r + spread;
+            const z = Math.sin(angle + armOffset) * r + spread;
+            const y = (Math.random() - 0.5) * 30 * (1 - r/400); // Thicker center
+
+            galaxyPos[i*3] = x;
+            galaxyPos[i*3+1] = y;
+            galaxyPos[i*3+2] = z;
+
+            // Blue/Cyan/Purple gradient
+            const dist = Math.sqrt(x*x + z*z);
+            if(dist < 50) {
+                galaxyCol[i*3] = 1.0; galaxyCol[i*3+1] = 0.9; galaxyCol[i*3+2] = 0.8; // White core
+            } else {
+                galaxyCol[i*3] = 0.1; galaxyCol[i*3+1] = 0.4 + Math.random()*0.6; galaxyCol[i*3+2] = 0.8 + Math.random()*0.2;
+            }
+        }
+
+        // --- 2. SATURN ---
+        for(let i=0; i<particleCount; i++) {
+            let x, y, z, r, g, b;
+            if(i < particleCount * 0.35) {
+                // Sphere
+                const rad = 70;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                x = rad * Math.sin(phi) * Math.cos(theta);
+                y = rad * Math.sin(phi) * Math.sin(theta);
+                z = rad * Math.cos(phi);
+                r=0.9; g=0.7; b=0.4; // Gold
+            } else {
+                // Rings
+                const ang = Math.random() * Math.PI * 2;
+                const rad = 100 + Math.random() * 100;
+                x = Math.cos(ang) * rad;
+                z = Math.sin(ang) * rad;
+                y = (Math.random() - 0.5) * 2;
+                r=0.6; g=0.6; b=0.7; // Greyish
+            }
+            saturnPos[i*3] = x; saturnPos[i*3+1] = y; saturnPos[i*3+2] = z;
+            saturnCol[i*3] = r; saturnCol[i*3+1] = g; saturnCol[i*3+2] = b;
+        }
+
+        // --- 3. COLLAPSE (Supernova Core) ---
+        for(let i=0; i<particleCount; i++) {
+            // Dense sphere
+            const rad = Math.random() * 30; // Very small radius
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            
+            // Add jitter
+            collapsePos[i*3] = rad * Math.sin(phi) * Math.cos(theta);
+            collapsePos[i*3+1] = rad * Math.sin(phi) * Math.sin(theta);
+            collapsePos[i*3+2] = rad * Math.cos(phi);
+
+            // Red/Orange/White
+            collapseCol[i*3] = 1.0; 
+            collapseCol[i*3+1] = Math.random() * 0.3; 
+            collapseCol[i*3+2] = 0.1;
+        }
+
+        // Init
+        positions.set(galaxyPos);
+        colors.set(galaxyCol);
+        for(let i=0; i<particleCount; i++) sizes[i] = Math.random() * 2;
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+        // Create Soft Texture
+        const getTexture = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32; canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            const grd = ctx.createRadialGradient(16,16,0,16,16,16);
+            grd.addColorStop(0, 'rgba(255,255,255,1)');
+            grd.addColorStop(0.4, 'rgba(255,255,255,0.3)');
+            grd.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = grd;
+            ctx.fillRect(0,0,32,32);
+            return new THREE.CanvasTexture(canvas);
+        };
+
+        const material = new THREE.PointsMaterial({
+            size: 2.5,
+            map: getTexture(),
+            vertexColors: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            transparent: true,
+            opacity: 0.9
+        });
+
+        const system = new THREE.Points(geometry, material);
+        scene.add(system);
+
+
+        // ==========================================
+        // 3. HAND TRACKING LOGIC
+        // ==========================================
+        
+        // UI Elements
+        const reticle = document.getElementById('reticle');
+        const trackStatus = document.getElementById('track-status');
+        const modeIndicator = document.getElementById('mode-indicator');
+        const fpsDisplay = document.getElementById('fps');
+        const els = {
+            galaxy: document.getElementById('g-galaxy'),
+            saturn: document.getElementById('g-saturn'),
+            collapse: document.getElementById('g-collapse')
+        };
+
+        // State
+        let targetState = 'galaxy'; // galaxy, saturn, collapse
+        let handX = 0, handY = 0, handZ = 0; // Normalized -1 to 1
+        let isTracking = false;
+
+        function updateUI(state) {
+            // Reset Styles
+            els.galaxy.classList.remove('active');
+            els.saturn.classList.remove('active');
+            els.collapse.classList.remove('active');
+            
+            if(state === 'galaxy') {
+                els.galaxy.classList.add('active');
+                modeIndicator.innerText = "GALAXY SPIRAL";
+                modeIndicator.style.borderColor = "#00ffcc";
+                modeIndicator.style.color = "#00ffcc";
+            } else if (state === 'saturn') {
+                els.saturn.classList.add('active');
+                modeIndicator.innerText = "PLANETARY RING";
+                modeIndicator.style.borderColor = "#ffd700";
+                modeIndicator.style.color = "#ffd700";
+            } else if (state === 'collapse') {
+                els.collapse.classList.add('active');
+                modeIndicator.innerText = "GRAVITATIONAL COLLAPSE";
+                modeIndicator.style.borderColor = "#ff3333";
+                modeIndicator.style.color = "#ff3333";
+            }
+        }
+
+        function onResults(results) {
+            loader.style.display = 'none';
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                isTracking = true;
+                trackStatus.innerHTML = "ONLINE";
+                trackStatus.style.color = "#00ffcc";
+                reticle.style.display = 'block';
+
+                const lm = results.multiHandLandmarks[0];
+                
+                // 1. Position (Index finger tip)
+                // Normalize coordinates
+                const ix = lm[8].x;
+                const iy = lm[8].y;
+                
+                // Update Reticle UI (Screen space)
+                reticle.style.left = (ix * 100) + '%';
+                reticle.style.top = (iy * 100) + '%';
+
+                // Update 3D Logic vars (-1 to 1 range)
+                handX = (ix - 0.5) * 2;
+                handY = (iy - 0.5) * 2;
+                
+                // Z-Depth estimation (Scale of hand relative to frame)
+                // Distance between wrist(0) and Middle finger mcp(9) usually stable
+                const dx = lm[0].x - lm[9].x;
+                const dy = lm[0].y - lm[9].y;
+                const handSize = Math.sqrt(dx*dx + dy*dy);
+                // Map size to Z (approx 0.1 to 0.3)
+                handZ = (handSize - 0.15) * 5; // Adjustment factor
+
+                // 2. Gesture Recognition
+                
+                // Calculate distances
+                const thumbTip = lm[4];
+                const indexTip = lm[8];
+                const middleTip = lm[12];
+                const ringTip = lm[16];
+                const pinkyTip = lm[20];
+                const wrist = lm[0];
+
+                // Pinch (Thumb to Index)
+                const pinchDist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
+                
+                // Fist (Average distance of all fingertips to wrist)
+                const tips = [indexTip, middleTip, ringTip, pinkyTip];
+                let avgDistToWrist = 0;
+                tips.forEach(tip => {
+                    avgDistToWrist += Math.hypot(tip.x - wrist.x, tip.y - wrist.y);
+                });
+                avgDistToWrist /= 4;
+
+                // Decision Tree
+                if (avgDistToWrist < 0.25) { 
+                    // FIST DETECTED
+                    targetState = 'collapse';
+                    reticle.style.borderColor = "#ff3333";
+                } else if (pinchDist < 0.06) {
+                    // PINCH DETECTED
+                    targetState = 'saturn';
+                    reticle.style.borderColor = "#ffd700";
+                } else {
+                    // OPEN HAND
+                    targetState = 'galaxy';
+                    reticle.style.borderColor = "#00ffcc";
+                }
+
+                updateUI(targetState);
+
+            } else {
+                isTracking = false;
+                trackStatus.innerHTML = "SEARCHING...";
+                trackStatus.style.color = "#ff3366";
+                reticle.style.display = 'none';
+            }
+        }
+
+        const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.6,
+            minTrackingConfidence: 0.6
+        });
+        hands.onResults(onResults);
+
+        const video = document.getElementsByClassName('input_video')[0];
+        const cameraUtils = new Camera(video, {
+            onFrame: async () => { await hands.send({image: video}); },
+            width: 640, height: 480
+        });
+        cameraUtils.start();
+
+        // ==========================================
+        // 4. ANIMATION LOOP
+        // ==========================================
+        const clock = new THREE.Clock();
+        let frameCount = 0;
+        let lastTime = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // FPS Counter
+            const time = clock.getElapsedTime();
+            frameCount++;
+            if(time - lastTime >= 1) {
+                fpsDisplay.innerText = frameCount + " FPS";
+                frameCount = 0;
+                lastTime = time;
+            }
+
+            // Morphing Logic
+            const curPos = geometry.attributes.position.array;
+            const curCol = geometry.attributes.color.array;
+            
+            let destPos, destCol;
+            if(targetState === 'saturn') { destPos = saturnPos; destCol = saturnCol; }
+            else if(targetState === 'collapse') { destPos = collapsePos; destCol = collapseCol; }
+            else { destPos = galaxyPos; destCol = galaxyCol; }
+
+            // Lerp Speed
+            const speed = 0.05;
+
+            for(let i=0; i<particleCount * 3; i++) {
+                curPos[i] += (destPos[i] - curPos[i]) * speed;
+                curCol[i] += (destCol[i] - curCol[i]) * speed;
+            }
+
+            geometry.attributes.position.needsUpdate = true;
+            geometry.attributes.color.needsUpdate = true;
+
+            // Camera / Scene Rotation Interaction
+            if(isTracking) {
+                // Rotate based on X/Y
+                const rotX = handY * 1.5; 
+                const rotY = -handX * 1.5;
+                
+                // Smooth camera rotation
+                system.rotation.x += (rotX - system.rotation.x) * 0.08;
+                system.rotation.y += (rotY - system.rotation.y) * 0.08;
+
+                // Zoom based on Hand Size (Z)
+                // Base Z is 400. Closer hand (larger Z value) -> Zoom in
+                const targetCamZ = 400 - (handZ * 200); 
+                camera.position.z += (targetCamZ - camera.position.z) * 0.05;
+
+            } else {
+                // Idle Rotation
+                system.rotation.y += 0.001;
+                // Return to base zoom
+                camera.position.z += (400 - camera.position.z) * 0.05;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>
